@@ -42,4 +42,4 @@ setsid /bin/cttyhack setuidgid 1000 /bin/sh
 EOF
 chmod +x init
 find . | cpio -o --format=newc > ../rootfs.img
-```echo 
+```
