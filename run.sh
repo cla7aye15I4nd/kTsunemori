@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./buildspec.sh
+python3 buildspec.py
 
 qemu-system-x86_64 \
 -m 64M \
