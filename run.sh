@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 buildspec.py
+./buildspec.sh
 
 cd busybox/_install && find . | cpio -o --format=newc > ../rootfs.img && cd -
 
