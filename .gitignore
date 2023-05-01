@@ -39,3 +39,10 @@ busybox
 
 # VSCode
 .vscode
+
+# Kernel
+*.ko
+*.cmd
+*.mod.c
+Module.symvers
+modules.order
