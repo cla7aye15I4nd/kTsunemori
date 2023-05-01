@@ -39,7 +39,7 @@ mount -t devtmpfs none /dev
 mount -t debugfs none /sys/kernel/debug
 mount -t tmpfs none /tmp
 echo -e "Boot took $(cut -d' ' -f1 /proc/uptime) seconds"
-setsid /bin/cttyhack setuidgid 1000 /bin/sh
+/bin/sh
 EOF
 chmod +x init
 find . | cpio -o --format=newc > ../rootfs.img

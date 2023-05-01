@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd busybox/_install && find . | cpio -o --format=newc > ../rootfs.img && cd -
+./buildspec.sh
 
 qemu-system-x86_64 \
 -m 64M \
