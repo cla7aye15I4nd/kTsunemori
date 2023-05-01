@@ -6,7 +6,7 @@ target=$basedir/busybox/_install
 for dir in $(ls $basedir/test); do
     path=$basedir/test/$dir
     if [ -d $path ]; then
-        make -C $path
+        cd $path && make && cd -
         cp $path/${dir}.ko $target
         chmod 777 $target/${dir}.ko
     fi
