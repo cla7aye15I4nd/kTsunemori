@@ -26,7 +26,7 @@ wget https://busybox.net/downloads/busybox-1.36.0.tar.bz2
 tar -xvf busybox-1.36.0.tar.bz2
 mv busybox-1.36.0 busybox && cd busybox
 make menuconfig ## Settings > [*] Build static binary (no shared libs)
-make -j$(nproc)
+make -j$(nproc) && make install
 cd _install
 mkdir -p proc sys dev etc/init.d
 cat > init << EOF
