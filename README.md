@@ -17,6 +17,7 @@ tar -xvf linux-5.15.109.tar.xz
 mv linux-5.15.109 linux && cd linux
 make CC=$(pwd)/../llvm-project/build/bin/clang defconfig
 make CC=$(pwd)/../llvm-project/build/bin/clang bzImage -j$(nproc)
+make CC=$(pwd)/../llvm-project/build/bin/clang -j$(nproc) # Don't know why, but it's needed
 ```
 
 ### Build Busybox
