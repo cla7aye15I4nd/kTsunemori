@@ -16,8 +16,7 @@ wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.15.109.tar.xz
 tar -xvf linux-5.15.109.tar.xz
 mv linux-5.15.109 linux && cd linux
 make CC=$(pwd)/../llvm-project/build/bin/clang defconfig
-make CC=$(pwd)/../llvm-project/build/bin/clang bzImage -j$(nproc)
-make CC=$(pwd)/../llvm-project/build/bin/clang -j$(nproc) # Don't know why, but it's needed
+make CC=$(pwd)/../llvm-project/build/bin/clang -j$(nproc)
 ```
 
 ### Build Busybox
