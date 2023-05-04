@@ -48,6 +48,8 @@ static int __init bench_init(void)
     add_edge(u, v);
   }
 
+  printk(KERN_INFO "Finish generating random graph\n");
+
   return 0;
 }
 
