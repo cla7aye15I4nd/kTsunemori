@@ -178,6 +178,8 @@ SANITIZER_GROUP("integer", Integer,
 SANITIZER("local-bounds", LocalBounds)
 SANITIZER_GROUP("bounds", Bounds, ArrayBounds | LocalBounds)
 
+SANITIZER("lifetime", LifeTime)
+
 // Scudo hardened allocator
 SANITIZER("scudo", Scudo)
 

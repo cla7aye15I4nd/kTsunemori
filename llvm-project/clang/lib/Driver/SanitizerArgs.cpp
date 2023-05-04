@@ -63,7 +63,7 @@ static const SanitizerMask AlwaysRecoverable =
 static const SanitizerMask NeedsLTO = SanitizerKind::CFI;
 static const SanitizerMask TrappingSupported =
     (SanitizerKind::Undefined & ~SanitizerKind::Vptr) | SanitizerKind::Integer |
-    SanitizerKind::Nullability | SanitizerKind::LocalBounds |
+    SanitizerKind::Nullability | SanitizerKind::LocalBounds | SanitizerKind::LifeTime |
     SanitizerKind::CFI | SanitizerKind::FloatDivideByZero |
     SanitizerKind::ObjCCast;
 static const SanitizerMask TrappingDefault = SanitizerKind::CFI;

@@ -11,6 +11,7 @@ static_library("Instrumentation") {
   sources = [
     "AddressSanitizer.cpp",
     "BoundsChecking.cpp",
+    "LifetimeChecking.cpp",
     "CGProfile.cpp",
     "ControlHeightReduction.cpp",
     "DataFlowSanitizer.cpp",
