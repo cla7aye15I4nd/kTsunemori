@@ -1,7 +1,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 
-#define MEMORY (500 * 1024 * 1024) // 500MB
+#define MEMORY (1024 * 1024 * 1024) // 1GB
 #define MAXN 0x10000
 #define MAXM ((MEMORY - MAXN * sizeof(struct Edge *)) / sizeof(struct Edge))
 
@@ -48,6 +48,17 @@ static int __init bench_init(void)
     add_edge(u, v);
   }
 
+  for (i = 0; i < MAXN; ++i) {
+    struct Edge *e = head[i];
+    while (e != NULL) {
+      struct Edge *tmp = e;
+      e = e->next;
+      kfree(tmp);
+    }
+  }
+  
+  kfree(head);
+
   printk(KERN_INFO "Finish generating random graph\n");
 
   return 0;
@@ -55,7 +66,6 @@ static int __init bench_init(void)
 
 static void __exit bench_exit(void)
 {
-  kfree(head);
   printk(KERN_INFO "Goodbye Benchmark!!\n");
 }
 

@@ -5,7 +5,7 @@
 cd busybox/_install && find . | cpio -o --format=newc > ../rootfs.img && cd -
 
 qemu-system-x86_64 \
--m 1G \
+-m 4G \
 -nographic \
 -kernel ./linux/arch/x86_64/boot/bzImage \
 -initrd  ./busybox/rootfs.img \
