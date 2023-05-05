@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./buildspec.sh
+./build_module.sh
 
 cd busybox/_install && find . | cpio -o --format=newc > ../rootfs.img && cd -
 
