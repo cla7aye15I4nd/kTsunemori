@@ -49,19 +49,62 @@ bool addLifetimeChecks(Function &F, TargetLibraryInfo &TLI) {
   const DataLayout &DL = M->getDataLayout();
   M->getOrInsertFunction("__lifetime_escape", Type::getVoidTy(C),
                          Type::getInt8PtrTy(C), Type::getInt8PtrTy(C));
+  M->getOrInsertFunction("__lifetime_start", Type::getVoidTy(C),
+                         Type::getInt8PtrTy(C), Type::getInt32Ty(C));
+  M->getOrInsertFunction("__lifetime_end", Type::getVoidTy(C),
+                         Type::getInt8PtrTy(C));
 
   Function *EscapeFn = M->getFunction("__lifetime_escape");
+  Function *StartFn = M->getFunction("__lifetime_start");
+  Function *EndFn = M->getFunction("__lifetime_end");
 
+  // Add Escape for all store instructions
   for (auto &BB : F) {
     for (auto &I : BB) {
       if (auto *SI = dyn_cast<StoreInst>(&I)) {
         if (SI->getValueOperand()->getType()->isPointerTy()) {
           Changed = true;
-          BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI), TargetFolder(DL));
+          BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI),
+                        TargetFolder(DL));
           Value *Ptr = SI->getPointerOperand();
           Value *Val = SI->getValueOperand();
 
           IRB.CreateCall(EscapeFn, {Ptr, Val});
+        }
+      }
+    }
+  }
+
+  // Add Start for all kmalloc calls
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      if (auto *CI = dyn_cast<CallInst>(&I)) {
+        if (Function *Callee = CI->getCalledFunction()) {
+          if (Callee->getName() == "malloc") {
+            Changed = true;
+            BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI),
+                          TargetFolder(DL));
+            Value *Ptr = CI;
+            Value *Size = CI->getArgOperand(0);
+            IRB.CreateCall(StartFn, {Ptr, Size});
+          }
+        }
+      }
+    }
+  }
+
+  // Add End for all kfree calls
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      if (auto *CI = dyn_cast<CallInst>(&I)) {
+        if (Function *Callee = CI->getCalledFunction()) {
+          if (Callee->getName() == "kfree") {
+            Changed = true;
+            BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI),
+                          TargetFolder(DL));
+            Value *Ptr = CI->getArgOperand(0);
+            IRB.CreateCall(EndFn, {Ptr});
+          }
         }
       }
     }
