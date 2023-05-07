@@ -69,5 +69,20 @@ static void __exit bench_exit(void)
   printk(KERN_INFO "Goodbye Benchmark!!\n");
 }
 
+void __lifetime_start(void *kptr, int size) {
+  // Use Kernel RBTree to store the information
+  printk(KERN_INFO "Start: %p, size: %d\n", kptr, size);
+}
+
+void __lifetime_end(void *kptr) {
+  // Use Kernel RBTree to clear the information
+  printk(KERN_INFO "End: %p\n", kptr);
+}
+
+void __lifetime_escape(void *kptr, void * memloc) {
+  // Use Kernel RBTree to store the information
+  printk(KERN_INFO "Escape: %p, memloc: %p\n", kptr, memloc);
+}
+
 module_init(bench_init);
 module_exit(bench_exit);
