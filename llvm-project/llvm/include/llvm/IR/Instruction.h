@@ -150,6 +150,8 @@ public:
   /// it takes constant time.
   bool comesBefore(const Instruction *Other) const;
 
+  Instruction *getInsertionPointAfterDef();
+
   //===--------------------------------------------------------------------===//
   // Subclass classification.
   //===--------------------------------------------------------------------===//
