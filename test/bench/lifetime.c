@@ -7,7 +7,7 @@
 
 static struct rb_root regions = RB_ROOT;
 
-memory_region_t *__lifetime_lookup(void *ptr)
+memory_region_t *__lifetime_region_lookup(void *ptr)
 {
   struct rb_node *node = regions.rb_node;
 
@@ -25,7 +25,7 @@ memory_region_t *__lifetime_lookup(void *ptr)
   return NULL;
 }
 
-void __lifetime_insert(void *ptr, size_t len)
+void __lifetime_region_insert(void *ptr, size_t len)
 {
   struct rb_node *parent = NULL;
   struct rb_node **new = &(regions.rb_node);
@@ -34,6 +34,7 @@ void __lifetime_insert(void *ptr, size_t len)
 
   data->addr = (uint64_t)ptr;
   data->len = len;
+  data->root = RB_ROOT;
 
   while (*new)
   {
@@ -50,13 +51,14 @@ void __lifetime_insert(void *ptr, size_t len)
   rb_insert_color(&data->node, &regions);
 }
 
-void __lifetime_remove(void *ptr)
+void __lifetime_region_remove(void *ptr)
 {
-  memory_region_t *n = __lifetime_lookup(ptr);
+  memory_region_t *n = __lifetime_region_lookup(ptr);
   if (n != NULL)
     rb_erase(&n->node, &regions);
   else
     printk(KERN_INFO "Double Free Detected\n");
+  kfree(n);
 }
 
 void __lifetime_start(void *ptr, size_t size)
@@ -64,7 +66,7 @@ void __lifetime_start(void *ptr, size_t size)
   printk(KERN_INFO "Start: %px, len: %zu\n", ptr, size);
 
   if (ptr != NULL)
-    __lifetime_insert(ptr, size);
+    __lifetime_region_insert(ptr, size);
 }
 
 void __lifetime_end(void *ptr)
@@ -72,10 +74,13 @@ void __lifetime_end(void *ptr)
   printk(KERN_INFO "End: %px\n", ptr);
 
   if (ptr != NULL)
-    __lifetime_remove(ptr);
+    __lifetime_region_remove(ptr);
 }
 
 void __lifetime_escape(void *ptr, void *loc)
 {
-  // printk(KERN_INFO "Escape: %px, loc: %px\n", ptr, loc);
+  memory_region_t *region = __lifetime_region_lookup(ptr);
+  if (region == NULL)
+    return;
+
 }
