@@ -32,7 +32,7 @@ struct Edge
 
 struct Edge **head;
 
-static void add_edge(int u, int v)
+static void noinline add_edge(int u, int v)
 {
   struct Edge *e = (struct Edge *)kmalloc_wrapper(sizeof(struct Edge));
   e->node = v;
