@@ -42,8 +42,9 @@ using namespace llvm;
 using BuilderTy = IRBuilder<TargetFolder>;
 
 bool addLifetimeChecks(Function &F, TargetLibraryInfo &TLI) {
-  bool Changed = false;
-
+  if (F.getName().startswith("__lifetime_"))
+    return false;
+  
   Module *M = F.getParent();
   LLVMContext &C = M->getContext();
   const DataLayout &DL = M->getDataLayout();
@@ -58,59 +59,57 @@ bool addLifetimeChecks(Function &F, TargetLibraryInfo &TLI) {
   Function *StartFn = M->getFunction("__lifetime_start");
   Function *EndFn = M->getFunction("__lifetime_end");
 
-  // Add Escape for all store instructions
+  SmallVector<CallInst *, 16> AllocCalls;
+  SmallVector<CallInst *, 16> FreeCalls;
+  SmallVector<StoreInst *, 16> StoreInsts;
+
   for (auto &BB : F) {
     for (auto &I : BB) {
-      if (auto *SI = dyn_cast<StoreInst>(&I)) {
+      if (auto *CI = dyn_cast<CallInst>(&I)) {
+        if (Function *Callee = CI->getCalledFunction()) {
+          if (Callee->getName() == "kmalloc_wrapper") {
+            AllocCalls.push_back(CI);
+          } else if (Callee->getName() == "kfree") {
+            FreeCalls.push_back(CI);
+          }
+        }
+      } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
         if (SI->getValueOperand()->getType()->isPointerTy()) {
-          Changed = true;
-          BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI),
-                        TargetFolder(DL));
-          Value *Ptr = SI->getPointerOperand();
-          Value *Val = SI->getValueOperand();
-
-          IRB.CreateCall(EscapeFn, {Ptr, Val});
+          StoreInsts.push_back(SI);
         }
       }
     }
   }
 
-  // Add Start for all kmalloc calls
-  for (auto &BB : F) {
-    for (auto &I : BB) {
-      if (auto *CI = dyn_cast<CallInst>(&I)) {
-        if (Function *Callee = CI->getCalledFunction()) {
-          if (Callee->getName() == "malloc") {
-            Changed = true;
-            BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI),
-                          TargetFolder(DL));
-            Value *Ptr = CI;
-            Value *Size = CI->getArgOperand(0);
-            IRB.CreateCall(StartFn, {Ptr, Size});
-          }
-        }
-      }
-    }
+  if (AllocCalls.empty() && FreeCalls.empty() && StoreInsts.empty())
+    return false;
+
+  for (auto *CI : AllocCalls) {
+    Instruction *InsertPt = CI->getInsertionPointAfterDef();
+    BuilderTy IRB(CI->getParent(), BasicBlock::iterator(InsertPt),
+                  TargetFolder(DL));
+    Value *Ptr = CI;
+    Value *Size = CI->getArgOperand(0);
+    IRB.CreateCall(StartFn, {Ptr, Size});
   }
 
-  // Add End for all kfree calls
-  for (auto &BB : F) {
-    for (auto &I : BB) {
-      if (auto *CI = dyn_cast<CallInst>(&I)) {
-        if (Function *Callee = CI->getCalledFunction()) {
-          if (Callee->getName() == "kfree") {
-            Changed = true;
-            BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI),
-                          TargetFolder(DL));
-            Value *Ptr = CI->getArgOperand(0);
-            IRB.CreateCall(EndFn, {Ptr});
-          }
-        }
-      }
-    }
+  for (auto *CI : FreeCalls) {
+    BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI),
+                  TargetFolder(DL));
+    Value *Ptr = CI->getArgOperand(0);
+    IRB.CreateCall(EndFn, {Ptr});
   }
 
-  return Changed;
+  for (auto *SI : StoreInsts) {
+    BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI),
+                  TargetFolder(DL));
+    Value *Ptr = SI->getPointerOperand();
+    Value *Val = SI->getValueOperand();
+
+    IRB.CreateCall(EscapeFn, {Val, Ptr});
+  }
+
+  return true;
 }
 
 PreservedAnalyses LifetimeCheckingPass::run(Function &F,
