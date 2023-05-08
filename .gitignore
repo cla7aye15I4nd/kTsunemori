@@ -39,6 +39,7 @@ busybox
 
 # VSCode
 .vscode
+.cache
 
 # Kernel
 *.ko

@@ -1,11 +1,11 @@
 MODULE = bench
 obj-m += $(MODULE).o
 $(MODULE)-y += lifetime.o main.o
-CFLAGS_bench.o := -fsanitize=lifetime
+KCFLAGS := -flegacy-pass-manager -Xclang -load -Xclang $(PWD)/../../pass/libLifetimeChecking.so
 WORKDIR := $(PWD)
 
 all:
-	make -C $(PWD)/../../linux M=$(PWD) CC=$(PWD)/../../llvm-project/build/bin/clang KCFLAGS=$(CFLAGS_bench.o) modules
+	make -C $(PWD)/../../linux M=$(PWD) CC=$(PWD)/../../llvm-project/build/bin/clang KCFLAGS="$(KCFLAGS)" modules
 
 clean:
 	make -C $(PWD)/../../linux M=$(PWD) CC=$(PWD)/../../llvm-project/build/bin/clang clean
