@@ -1,4 +1,6 @@
-obj-m+=bench.o
+MODULE = bench
+obj-m += $(MODULE).o
+$(MODULE)-y += lifetime.o main.o
 CFLAGS_bench.o := -fsanitize=lifetime
 WORKDIR := $(PWD)
 
