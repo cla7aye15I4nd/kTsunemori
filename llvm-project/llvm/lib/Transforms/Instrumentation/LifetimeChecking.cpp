@@ -44,14 +44,14 @@ using BuilderTy = IRBuilder<TargetFolder>;
 bool addLifetimeChecks(Function &F, TargetLibraryInfo &TLI) {
   if (F.getName().startswith("__lifetime_"))
     return false;
-  
+
   Module *M = F.getParent();
   LLVMContext &C = M->getContext();
   const DataLayout &DL = M->getDataLayout();
   M->getOrInsertFunction("__lifetime_escape", Type::getVoidTy(C),
                          Type::getInt8PtrTy(C), Type::getInt8PtrTy(C));
   M->getOrInsertFunction("__lifetime_start", Type::getVoidTy(C),
-                         Type::getInt8PtrTy(C), Type::getInt32Ty(C));
+                         Type::getInt8PtrTy(C), Type::getInt64Ty(C));
   M->getOrInsertFunction("__lifetime_end", Type::getVoidTy(C),
                          Type::getInt8PtrTy(C));
 
@@ -94,15 +94,13 @@ bool addLifetimeChecks(Function &F, TargetLibraryInfo &TLI) {
   }
 
   for (auto *CI : FreeCalls) {
-    BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI),
-                  TargetFolder(DL));
+    BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI), TargetFolder(DL));
     Value *Ptr = CI->getArgOperand(0);
     IRB.CreateCall(EndFn, {Ptr});
   }
 
   for (auto *SI : StoreInsts) {
-    BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI),
-                  TargetFolder(DL));
+    BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI), TargetFolder(DL));
     Value *Ptr = SI->getPointerOperand();
     Value *Val = SI->getValueOperand();
 
