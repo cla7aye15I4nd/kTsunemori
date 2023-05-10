@@ -7,6 +7,11 @@ mkdir -p build && cd build
 cmake -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../llvm
 make -j$(nproc)
 
+cd $BASEDIR/pass
+mkdir -p build && cd build
+cmake ..
+make -j$(nproc)
+
 
 if [ ! -d $BASEDIR/linux ]; then
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.15.109.tar.xz

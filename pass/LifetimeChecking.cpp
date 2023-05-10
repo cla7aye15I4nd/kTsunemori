@@ -43,130 +43,115 @@ using namespace llvm;
 
 using BuilderTy = IRBuilder<TargetFolder>;
 
-bool addLifetimeChecks(Function& F, TargetLibraryInfo& TLI)
-{
-    if (F.getName().startswith("__lifetime_"))
-        return false;
+bool addLifetimeChecks(Function &F, TargetLibraryInfo &TLI) {
+  if (F.getName().startswith("__lifetime_"))
+    return false;
 
-    Module* M = F.getParent();
-    LLVMContext& C = M->getContext();
-    const DataLayout& DL = M->getDataLayout();
-    M->getOrInsertFunction("__lifetime_escape", Type::getVoidTy(C),
-        Type::getInt8PtrTy(C), Type::getInt8PtrTy(C));
-    M->getOrInsertFunction("__lifetime_start", Type::getVoidTy(C),
-        Type::getInt8PtrTy(C), Type::getInt64Ty(C));
-    M->getOrInsertFunction("__lifetime_end", Type::getVoidTy(C),
-        Type::getInt8PtrTy(C));
+  Module *M = F.getParent();
+  LLVMContext &C = M->getContext();
+  const DataLayout &DL = M->getDataLayout();
+  M->getOrInsertFunction("__lifetime_escape", Type::getVoidTy(C),
+                         Type::getInt8PtrTy(C), Type::getInt8PtrTy(C));
+  M->getOrInsertFunction("__lifetime_start", Type::getVoidTy(C),
+                         Type::getInt8PtrTy(C), Type::getInt64Ty(C));
+  M->getOrInsertFunction("__lifetime_end", Type::getVoidTy(C),
+                         Type::getInt8PtrTy(C));
 
-    Function* EscapeFn = M->getFunction("__lifetime_escape");
-    Function* StartFn = M->getFunction("__lifetime_start");
-    Function* EndFn = M->getFunction("__lifetime_end");
+  Function *EscapeFn = M->getFunction("__lifetime_escape");
+  Function *StartFn = M->getFunction("__lifetime_start");
+  Function *EndFn = M->getFunction("__lifetime_end");
 
-    SmallVector<CallInst*, 16> AllocCalls;
-    SmallVector<CallInst*, 16> FreeCalls;
-    SmallVector<StoreInst*, 16> StoreInsts;
+  SmallVector<CallInst *, 16> AllocCalls;
+  SmallVector<CallInst *, 16> FreeCalls;
+  SmallVector<StoreInst *, 16> StoreInsts;
 
-    for (auto& BB : F) {
-        for (auto& I : BB) {
-            if (auto* CI = dyn_cast<CallInst>(&I)) {
-                if (Function* Callee = CI->getCalledFunction()) {
-                    if (Callee->getName() == "kmalloc_wrapper") {
-                        AllocCalls.push_back(CI);
-                    } else if (Callee->getName() == "kfree") {
-                        FreeCalls.push_back(CI);
-                    }
-                }
-            } else if (auto* SI = dyn_cast<StoreInst>(&I)) {
-                if (SI->getValueOperand()->getType()->isPointerTy()) {
-                    StoreInsts.push_back(SI);
-                }
-            }
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      if (auto *CI = dyn_cast<CallInst>(&I)) {
+        if (Function *Callee = CI->getCalledFunction()) {
+          if (Callee->getName() == "kmalloc_wrapper") {
+            AllocCalls.push_back(CI);
+          } else if (Callee->getName() == "kfree") {
+            FreeCalls.push_back(CI);
+          }
         }
+      } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+        if (SI->getValueOperand()->getType()->isPointerTy()) {
+          StoreInsts.push_back(SI);
+        }
+      }
     }
+  }
 
-    if (AllocCalls.empty() && FreeCalls.empty() && StoreInsts.empty())
-        return false;
+  if (AllocCalls.empty() && FreeCalls.empty() && StoreInsts.empty())
+    return false;
 
-    for (auto* CI : AllocCalls) {
-        Instruction* InsertPt = CI->getInsertionPointAfterDef();
-        BuilderTy IRB(CI->getParent(), BasicBlock::iterator(InsertPt),
-            TargetFolder(DL));
-        Value* Ptr = CI;
-        Value* Size = CI->getArgOperand(0);
-        IRB.CreateCall(StartFn, { Ptr, Size });
-    }
+  for (auto *CI : AllocCalls) {
+    Instruction *InsertPt = CI->getInsertionPointAfterDef();
+    BuilderTy IRB(CI->getParent(), BasicBlock::iterator(InsertPt),
+                  TargetFolder(DL));
+    Value *Ptr = CI;
+    Value *Size = CI->getArgOperand(0);
+    IRB.CreateCall(StartFn, {Ptr, Size});
+  }
 
-    for (auto* CI : FreeCalls) {
-        BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI), TargetFolder(DL));
-        Value* Ptr = CI->getArgOperand(0);
-        IRB.CreateCall(EndFn, { Ptr });
-    }
+  for (auto *CI : FreeCalls) {
+    BuilderTy IRB(CI->getParent(), BasicBlock::iterator(CI), TargetFolder(DL));
+    Value *Ptr = CI->getArgOperand(0);
+    IRB.CreateCall(EndFn, {Ptr});
+  }
 
-    for (auto* SI : StoreInsts) {
-        BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI), TargetFolder(DL));
-        Value* Ptr = SI->getPointerOperand();
-        Value* Val = SI->getValueOperand();
+  for (auto *SI : StoreInsts) {
+    BuilderTy IRB(SI->getParent(), BasicBlock::iterator(SI), TargetFolder(DL));
+    Value *Ptr = SI->getPointerOperand();
+    Value *Val = SI->getValueOperand();
 
-        IRB.CreateCall(EscapeFn, { Val, Ptr });
-    }
+    IRB.CreateCall(EscapeFn, {Val, Ptr});
+  }
 
-    return true;
+  return true;
 }
 
-PreservedAnalyses LifetimeCheckingPass::run(Function& F,
-    FunctionAnalysisManager& AM)
-{
-    auto& TLI = AM.getResult<TargetLibraryAnalysis>(F);
+PreservedAnalyses LifetimeCheckingPass::run(Function &F,
+                                            FunctionAnalysisManager &AM) {
+  auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
 
-    if (!addLifetimeChecks(F, TLI))
-        return PreservedAnalyses::all();
+  if (!addLifetimeChecks(F, TLI))
+    return PreservedAnalyses::all();
 
-    return PreservedAnalyses::none();
+  return PreservedAnalyses::none();
 }
 
 namespace {
 struct LifetimeCheckingLegacyPass : public FunctionPass {
-    static char ID;
+  static char ID;
 
-    LifetimeCheckingLegacyPass()
-        : FunctionPass(ID)
-    {
-        dbgs() << "LifetimeCheckingLegacyPass\n";
-        initializeLifetimeCheckingLegacyPassPass(*PassRegistry::getPassRegistry());
-    }
+  LifetimeCheckingLegacyPass() : FunctionPass(ID) {
+    initializeLifetimeCheckingLegacyPassPass(*PassRegistry::getPassRegistry());
+  }
 
-    bool runOnFunction(Function& F) override
-    {
-        auto& TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
-        return addLifetimeChecks(F, TLI);
-    }
+  bool runOnFunction(Function &F) override {
+    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
+    return addLifetimeChecks(F, TLI);
+  }
 
-    void getAnalysisUsage(AnalysisUsage& AU) const override
-    {
-        AU.addRequired<TargetLibraryInfoWrapperPass>();
-        AU.addRequired<ScalarEvolutionWrapperPass>();
-    }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetLibraryInfoWrapperPass>();
+    AU.addRequired<ScalarEvolutionWrapperPass>();
+  }
 };
 } // namespace
 
 char LifetimeCheckingLegacyPass::ID = 0;
 
-static void registerPass(const PassManagerBuilder&,
-    legacy::PassManagerBase& PM)
-{
-    PM.add(new LifetimeCheckingLegacyPass());
+static void registerPass(const PassManagerBuilder &,
+                         legacy::PassManagerBase &PM) {
+  PM.add(new LifetimeCheckingLegacyPass());
 }
 
 static RegisterStandardPasses
     RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerPass);
 
-FunctionPass* llvm::createLifetimeCheckingLegacyPass()
-{
-    return new LifetimeCheckingLegacyPass();
+FunctionPass *llvm::createLifetimeCheckingLegacyPass() {
+  return new LifetimeCheckingLegacyPass();
 }
-
-// This is the core interface for pass plugins. It guarantees that 'opt' will
-// recognize LegacyHelloWorld when added to the pass pipeline on the command
-// line, i.e.  via '--legacy-hello-world'
-// static RegisterPass<LifetimeCheckingPass>
-//     X("lifetime-checking", "Lifetime checking pass");
