@@ -1,11 +1,16 @@
 #ifndef LIFETIME_H
 #define LIFETIME_H
 
+#ifndef DEBUG
+#define DEBUG(...)
+#else
 #define DEBUG(...) printk(KERN_INFO __VA_ARGS__)
+#endif
+
 #define ERROR(...) printk(KERN_ERR __VA_ARGS__)
 #define MASK 0xfffffff000000000
 #define POISON(x) ((uint64_t)(x) | MASK)
-#define IS_POISON(x) (((uint64_t)(x) & MASK) == MASK)
+#define IS_POISON(x) (((uint64_t)(x)&MASK) == MASK)
 
 typedef struct memory_region
 {
