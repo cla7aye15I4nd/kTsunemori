@@ -1,8 +1,6 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 
-#include "lifetime.h"
-
 #define MEMORY (1024 * 1024 * 100) // 100MB
 #define MAXN 0x10000
 #define MAXM (MEMORY - MAXN * sizeof(struct Edge *)) / sizeof(struct Edge)
