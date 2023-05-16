@@ -39,7 +39,6 @@ void __lifetime_end(void *ptr)
 
 void __lifetime_escape(void *ptr, void *loc)
 {
-  return;
   memory_region_t *ptr_r;
   memory_region_t *old_r;
   uint64_t old = *(uint64_t *)loc;
